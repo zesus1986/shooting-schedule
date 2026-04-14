@@ -21,43 +21,39 @@ h1 { font-size: 18px; font-weight: 600; margin-bottom: 1.5rem; }
 .cell { aspect-ratio: 1; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid transparent; transition: opacity 0.1s; user-select: none; }
 .cell:hover { opacity: 0.75; }
 .cell.empty { cursor: default; }
-.cell.s-none    { background: #2C2C2A; color: #fff; border-color: #111; }
-.cell.s-seongsu { background: #2E86C1; color: #fff; border-color: #1A5276; }
-.cell.s-ulsan   { background: #1E8449; color: #fff; border-color: #145A32; }
-.cell.s-both    { background: #F39C12; color: #fff; border-color: #B7770D; }
-.cell.s-unset   { background: #f0f0f0; color: #aaa; border-color: #e0e0e0; }
+.cell.s-none    { background: #2C2C2A; color: #fff; }
+.cell.s-seongsu { background: #2E86C1; color: #fff; }
+.cell.s-ulsan   { background: #1E8449; color: #fff; }
+.cell.s-both    { background: #F39C12; color: #fff; }
+.cell.s-unset   { background: #e8e8e8; color: #999; }
 .cell.sun-date.s-unset { color: #C0392B; }
 .cell.sat-date.s-unset { color: #2471A3; }
 .legend { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 1.5rem; }
 .leg { display: flex; align-items: center; gap: 8px; font-size: 13px; }
-.leg-box { width: 36px; height: 24px; border-radius: 5px; border: 1px solid rgba(0,0,0,0.15); flex-shrink: 0; }
+.leg-box { width: 36px; height: 24px; border-radius: 5px; flex-shrink: 0; }
 .lb-none    { background: #2C2C2A; }
 .lb-seongsu { background: #2E86C1; }
 .lb-ulsan   { background: #1E8449; }
 .lb-both    { background: #F39C12; }
-.lb-unset   { background: #f0f0f0; border-color: #e0e0e0; }
+.lb-unset   { background: #e8e8e8; border: 1px solid #ccc; }
 .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
-button { font-size: 13px; padding: 7px 16px; border-radius: 8px; border: 1px solid #ccc; background: #fff; color: #222; cursor: pointer; font-weight: 500; }
+button { font-size: 13px; padding: 7px 16px; border-radius: 8px; border: 1px solid #ccc; background: #fff; color: #222; cursor: pointer; }
 button:hover { background: #f0f0f0; }
 .save-btn { background: #D6EAF8; color: #1A5276; border-color: #2E86C1; }
 .hint { font-size: 12px; color: #aaa; margin-bottom: 1rem; }
-.status { font-size: 13px; min-height: 20px; display: flex; align-items: center; gap: 6px; }
-.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #2E86C1; animation: pulse 1s infinite; }
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+.status { font-size: 13px; min-height: 20px; margin-top: 8px; }
 </style>
 </head>
 <body>
 <div class="top">
   <h1>촬영 스케줄 2026</h1>
-  <div style="display:flex;gap:6px;flex-wrap:wrap;">
+  <div style="display:flex;gap:6px;">
     <button onclick="setAll('s-both')">전체 가능</button>
     <button onclick="setAll('s-none')">전체 불가</button>
     <button onclick="setAll('s-unset')">초기화</button>
   </div>
 </div>
-
-<div class="months" id="calendars"></div>
-
+<div id="calendars" class="months"></div>
 <div class="legend">
   <div class="leg"><div class="leg-box lb-unset"></div> 미정</div>
   <div class="leg"><div class="leg-box lb-none"></div> 둘 다 불가</div>
@@ -66,23 +62,128 @@ button:hover { background: #f0f0f0; }
   <div class="leg"><div class="leg-box lb-both"></div> 성수 + 울산 모두 가능</div>
 </div>
 <p class="hint">날짜 클릭 시: 미정 → 둘다불가 → 성수만 → 울산만 → 둘다가능 순으로 변경</p>
-
 <div class="actions">
   <button class="save-btn" onclick="saveToSheet()">구글 시트에 저장</button>
   <button onclick="loadFromSheet()">시트에서 불러오기</button>
   <button onclick="copyText()">텍스트로 복사</button>
 </div>
 <div class="status" id="status"></div>
-
 <script>
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxVVtxwZlKycjZy5yxm6SsIzFC3bW21H-HFnLx5iD1Ku00X9RlJwO5Fi0HzmUfm1vTmgg/exec';
-const months = [
+var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxVVtxwZlKycjZy5yxm6SsIzFC3bW21H-HFnLx5iD1Ku00X9RlJwO5Fi0HzmUfm1vTmgg/exec';
+var monthData = [
   { year: 2026, month: 4, label: '2026년 4월', startDow: 3, totalDays: 30 },
   { year: 2026, month: 5, label: '2026년 5월', startDow: 5, totalDays: 31 }
 ];
-const states = {};
-const cycle = ['s-unset','s-none','s-seongsu','s-ulsan','s-both'];
-const stateLabels = { 's-unset':'미정','s-none':'둘 다 불가','s-seongsu':'성수만 가능','s-ulsan':'울산만 가능','s-both':'성수+울산 모두 가능' };
+var states = {};
+var cycle = ['s-unset','s-none','s-seongsu','s-ulsan','s-both'];
+var labels = { 's-unset':'미정','s-none':'둘 다 불가','s-seongsu':'성수만 가능','s-ulsan':'울산만 가능','s-both':'성수+울산 모두 가능' };
 
-function stateKey(y,m,d){ return y+'-'+m+'-'+d; }
-function cycleState(key){
+function key(y,m,d) { return y+'-'+m+'-'+d; }
+
+function cycleState(k) {
+  var cur = states[k] || 's-unset';
+  var idx = cycle.indexOf(cur);
+  states[k] = cycle[(idx+1) % cycle.length];
+  render();
+}
+
+function setAll(s) {
+  for (var i=0; i<monthData.length; i++) {
+    var mo = monthData[i];
+    for (var d=1; d<=mo.totalDays; d++) states[key(mo.year,mo.month,d)] = s;
+  }
+  render();
+}
+
+function render() {
+  var container = document.getElementById('calendars');
+  container.innerHTML = '';
+  for (var i=0; i<monthData.length; i++) {
+    var mo = monthData[i];
+    var wrap = document.createElement('div');
+    wrap.className = 'month';
+    var h = '<div class="month-title">' + mo.label + '</div>';
+    h += '<div class="day-labels">';
+    var days = ['일','월','화','수','목','금','토'];
+    for (var x=0; x<7; x++) {
+      var cls = x===0 ? 'sun' : x===6 ? 'sat' : '';
+      h += '<span class="day-label ' + cls + '">' + days[x] + '</span>';
+    }
+    h += '</div><div class="grid">';
+    for (var e=0; e<mo.startDow; e++) h += '<div class="cell empty"></div>';
+    for (var d=1; d<=mo.totalDays; d++) {
+      var k2 = key(mo.year, mo.month, d);
+      var st = states[k2] || 's-unset';
+      var dow = (mo.startDow + d - 1) % 7;
+      var dc = dow===0 ? 'sun-date' : dow===6 ? 'sat-date' : '';
+      h += '<div class="cell ' + st + ' ' + dc + '" onclick="cycleState(\'' + k2 + '\')">' + d + '</div>';
+    }
+    h += '</div>';
+    wrap.innerHTML = h;
+    container.appendChild(wrap);
+  }
+}
+
+function setStatus(msg) {
+  document.getElementById('status').innerHTML = msg;
+  if (msg.indexOf('중') < 0) setTimeout(function(){ document.getElementById('status').innerHTML=''; }, 5000);
+}
+
+function saveToSheet() {
+  setStatus('저장 중...');
+  var entries = [];
+  for (var i=0; i<monthData.length; i++) {
+    var mo = monthData[i];
+    for (var d=1; d<=mo.totalDays; d++) {
+      var k2 = key(mo.year, mo.month, d);
+      entries.push({ key: k2, value: states[k2] || 's-unset' });
+    }
+  }
+  var idx = 0;
+  function next() {
+    if (idx >= entries.length) { setStatus('✅ 저장됐어요! (' + entries.length + '개)'); return; }
+    var e = entries[idx++];
+    fetch(SCRIPT_URL + '?action=save&key=' + encodeURIComponent(e.key) + '&value=' + encodeURIComponent(e.value))
+      .then(function() { next(); })
+      .catch(function(err) { setStatus('❌ 실패: ' + err.message); });
+  }
+  next();
+}
+
+function loadFromSheet() {
+  setStatus('불러오는 중...');
+  fetch(SCRIPT_URL + '?t=' + Date.now())
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      for (var k2 in data) states[k2] = data[k2];
+      render();
+      setStatus('✅ 불러왔어요!');
+    })
+    .catch(function(e) { setStatus('❌ 실패: ' + e.message); });
+}
+
+function copyText() {
+  var lines = ['📷 촬영 스케줄 2026\n'];
+  for (var i=0; i<monthData.length; i++) {
+    var mo = monthData[i];
+    lines.push('▶ ' + mo.label);
+    var b = {'s-both':[],'s-seongsu':[],'s-ulsan':[],'s-none':[]};
+    for (var d=1; d<=mo.totalDays; d++) {
+      var s = states[key(mo.year,mo.month,d)] || 's-unset';
+      if (b[s]) b[s].push(d);
+    }
+    if (b['s-both'].length) lines.push('  🟡 성수+울산: ' + b['s-both'].join(', ') + '일');
+    if (b['s-seongsu'].length) lines.push('  🔵 성수만: ' + b['s-seongsu'].join(', ') + '일');
+    if (b['s-ulsan'].length) lines.push('  🟢 울산만: ' + b['s-ulsan'].join(', ') + '일');
+    if (b['s-none'].length) lines.push('  ⬛ 둘다불가: ' + b['s-none'].join(', ') + '일');
+    lines.push('');
+  }
+  navigator.clipboard.writeText(lines.join('\n'))
+    .then(function() { setStatus('📋 복사됐어요!'); })
+    .catch(function() { setStatus('복사 실패'); });
+}
+
+window.onload = function() { render(); };
+</script>
+</body>
+</html>
