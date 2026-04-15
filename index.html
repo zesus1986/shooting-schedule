@@ -69,7 +69,7 @@ button:hover { background: #f0f0f0; }
 </div>
 <div class="status" id="status"></div>
 <script>
-var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzEweAIkbvXXgurZC5hPNSIXYDxLBSgcggzwN30I1EgfQAOU065CYNiyoxUd9zD5_ft8w/exec';
+var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxAYc2GwlR_JVwqq_MDToYwrNshRmOfHj8_ZuB-ONb45XFyv9y6zf7OgUxC0a82zrJKKg/exec';
 var monthData = [
   { year: 2026, month: 4, label: '2026년 4월', startDow: 3, totalDays: 30 },
   { year: 2026, month: 5, label: '2026년 5월', startDow: 5, totalDays: 31 }
@@ -139,15 +139,11 @@ function saveToSheet() {
       entries.push({ key: k2, value: states[k2] || 's-unset' });
     }
   }
-  var idx = 0;
-  function next() {
-    if (idx >= entries.length) { setStatus('✅ 저장됐어요! (' + entries.length + '개)'); return; }
-    var e = entries[idx++];
-    fetch(SCRIPT_URL + '?action=save&key=' + encodeURIComponent(e.key) + '&value=' + encodeURIComponent(e.value))
-      .then(function() { next(); })
-      .catch(function(err) { setStatus('❌ 실패: ' + err.message); });
-  }
-  next();
+  var url = SCRIPT_URL + '?action=saveAll&data=' + encodeURIComponent(JSON.stringify(entries));
+  fetch(url)
+    .then(function(r) { return r.json(); })
+    .then(function(res) { setStatus('✅ 저장됐어요! (' + res.count + '개 날짜)'); })
+    .catch(function(err) { setStatus('❌ 실패: ' + err.message); });
 }
 
 function loadFromSheet() {
